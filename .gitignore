@@ -30,3 +30,6 @@ Thumbs.db
 # Antigravity IDE system generated artifacts
 .system_generated/
 *.log
+
+# Presentations & internal document folder
+document/
