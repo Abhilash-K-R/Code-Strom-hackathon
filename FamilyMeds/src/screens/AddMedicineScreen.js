@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { StorageService } from '../services/storageService';
+import { NotificationService } from '../services/notificationService';
 
 export default function AddMedicineScreen({ navigation }) {
   const [name, setName] = useState('Thyronorm 50mcg');
@@ -40,8 +41,15 @@ export default function AddMedicineScreen({ navigation }) {
       dosage: '1 Tablet',
     });
 
+    // Schedule local daily reminder on device
+    await NotificationService.scheduleDailySlotReminder({
+      id: `slot-${selectedSlot.toLowerCase()}`,
+      time,
+      label: `${selectedSlot} Medicines`,
+    });
+
     Alert.alert(
-      "✅ Medicine Saved & Synced",
+      "✅ Medicine Saved & Reminder Scheduled",
       `"${name}" scheduled for ${time} (${selectedSlot}). Saved to local storage and active for Amma.`,
       [{ text: "OK", onPress: () => navigation.goBack() }]
     );

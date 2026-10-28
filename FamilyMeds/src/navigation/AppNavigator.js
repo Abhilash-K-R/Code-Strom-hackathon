@@ -1,6 +1,7 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
 
 import LoginScreen from '../screens/LoginScreen';
 import ParentDashboardScreen from '../screens/ParentDashboardScreen';
@@ -11,10 +12,34 @@ import HistoryScreen from '../screens/HistoryScreen';
 import DoctorViewScreen from '../screens/DoctorViewScreen';
 
 const Stack = createNativeStackNavigator();
+export const navigationRef = createNavigationContainerRef();
 
 export default function AppNavigator() {
+  useEffect(() => {
+    // Listener 1: When notification fires while app is in foreground
+    const subReceived = Notifications.addNotificationReceivedListener((notification) => {
+      const slotId = notification.request.content.data?.slotId;
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('Alarm', { slotId });
+      }
+    });
+
+    // Listener 2: When user taps on notification from lockscreen/notification shade
+    const subResponse = Notifications.addNotificationResponseReceivedListener((response) => {
+      const slotId = response.notification.request.content.data?.slotId;
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('Alarm', { slotId });
+      }
+    });
+
+    return () => {
+      subReceived.remove();
+      subResponse.remove();
+    };
+  }, []);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="Login"
         screenOptions={{

@@ -12,9 +12,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { MOCK_PARENT, MOCK_SLOTS } from '../constants/mockData';
 import { StorageService } from '../services/storageService';
+import { NotificationService } from '../services/notificationService';
 
 export default function ParentDashboardScreen({ navigation }) {
   const [slots, setSlots] = useState(MOCK_SLOTS);
+  const [demoCountdown, setDemoCountdown] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -31,6 +33,24 @@ export default function ParentDashboardScreen({ navigation }) {
   );
 
   const nextSlot = slots.find((s) => s.status !== 'TAKEN') || slots[0] || MOCK_SLOTS[0];
+
+  const handleScheduleDemo30s = async () => {
+    // Schedule native notification in 30s
+    await NotificationService.scheduleDemoReminder30s(nextSlot.id, nextSlot.label);
+    setDemoCountdown(30);
+
+    const interval = setInterval(() => {
+      setDemoCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Fallback auto-navigate if notification wasn't tapped
+          navigation.navigate('Alarm', { slotId: nextSlot.id });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -74,16 +94,38 @@ export default function ParentDashboardScreen({ navigation }) {
             </Text>
           ))}
 
-          {/* Big Trigger Alarm Simulation Button */}
+          {/* Buttons Row: 1 Instant Test, 1 30-Second Scheduled Demo */}
           <TouchableOpacity
             style={styles.alarmTriggerButton}
             activeOpacity={0.85}
             onPress={() => navigation.navigate('Alarm', { slotId: nextSlot.id })}
           >
-            <Text style={styles.alarmTriggerIcon}>🔔</Text>
+            <Text style={styles.alarmTriggerIcon}>⚡</Text>
             <View>
-              <Text style={styles.alarmTriggerTitle}>ಅಲಾರಂ ಪರೀಕ್ಷಿಸಿ (Simulate {nextSlot.time})</Text>
-              <Text style={styles.alarmTriggerSub}>Tap to test full-screen Kannada alarm</Text>
+              <Text style={styles.alarmTriggerTitle}>ತಕ್ಷಣದ ಪರೀಕ್ಷೆ (Instant Alarm)</Text>
+              <Text style={styles.alarmTriggerSub}>Immediate full-screen alarm & Kannada voice</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* 30-Second Real Scheduled Reminder Demo */}
+          <TouchableOpacity
+            style={[styles.scheduledDemoBtn, demoCountdown > 0 && styles.scheduledDemoBtnActive]}
+            activeOpacity={0.85}
+            onPress={handleScheduleDemo30s}
+            disabled={demoCountdown > 0}
+          >
+            <Text style={styles.scheduledDemoIcon}>⏱️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.scheduledDemoTitle}>
+                {demoCountdown > 0
+                  ? `ಅಲಾರಂ ${demoCountdown}s ನಂತರ ಬರುತ್ತದೆ...`
+                  : '30-ಸೆಕೆಂಡ್ ಡೆಮೊ (Schedule 30s Reminder)'}
+              </Text>
+              <Text style={styles.scheduledDemoSub}>
+                {demoCountdown > 0
+                  ? 'Close app or wait: notification will fire automatically!'
+                  : 'Tests native Expo Notification in 30 seconds'}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -249,10 +291,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   alarmTriggerButton: {
-    marginTop: 18,
+    marginTop: 14,
     backgroundColor: '#0D9488', // Teal 600
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,17 +302,46 @@ const styles = StyleSheet.create({
     borderColor: '#2DD4BF',
   },
   alarmTriggerIcon: {
-    fontSize: 24,
+    fontSize: 22,
     marginRight: 12,
   },
   alarmTriggerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
     color: '#FFFFFF',
   },
   alarmTriggerSub: {
     fontSize: 11,
     color: '#CCFBF1',
+  },
+  scheduledDemoBtn: {
+    marginTop: 10,
+    backgroundColor: '#334155', // Slate 700
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#64748B',
+  },
+  scheduledDemoBtnActive: {
+    backgroundColor: '#7C3AED', // Purple alert
+    borderColor: '#A78BFA',
+  },
+  scheduledDemoIcon: {
+    fontSize: 22,
+    marginRight: 12,
+  },
+  scheduledDemoTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  scheduledDemoSub: {
+    fontSize: 10.5,
+    color: '#CBD5E1',
+    marginTop: 2,
   },
   sectionTitle: {
     fontSize: 18,
