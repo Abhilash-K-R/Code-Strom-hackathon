@@ -1,9 +1,8 @@
 // FamilyMeds API Configuration
-// Change this to your local Wi-Fi IP (e.g. http://192.168.1.100:5000) when testing on physical devices.
-// For web / local: http://localhost:5000
-// For Android Emulator: http://10.0.2.2:5000
+// Set to your current Wi-Fi IP so physical phones can reach the backend server over LAN.
+// If testing purely inside an Android emulator, you can also use: http://10.0.2.2:5000
 
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:5000',
+  BASE_URL: 'http://10.100.54.244:5000',
   TIMEOUT_MS: 3000,
 };
