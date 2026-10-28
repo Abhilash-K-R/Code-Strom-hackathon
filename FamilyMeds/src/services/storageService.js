@@ -1,9 +1,45 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MOCK_SLOTS, MOCK_HISTORY } from '../constants/mockData';
+import { ApiService } from './apiService';
 
 const KEYS = {
   SLOTS: '@familymeds_slots_v1',
   HISTORY: '@familymeds_history_v1',
+};
+
+/**
+ * Transforms a flat list of medicines from GET /medicines into dashboard slots.
+ */
+const groupMedicinesIntoSlots = (medicines) => {
+  if (!medicines || medicines.length === 0) return MOCK_SLOTS;
+
+  const slotMap = {};
+
+  medicines.forEach((med) => {
+    const sId = med.slotId || (med.slotTime === '08:30 PM' ? 'slot-night' : 'slot-morning');
+    if (!slotMap[sId]) {
+      slotMap[sId] = {
+        id: sId,
+        time: med.slotTime || '09:00 AM',
+        label: med.slotLabel || 'Medicines',
+        status: med.status || 'SCHEDULED',
+        medicines: [],
+      };
+    }
+
+    slotMap[sId].medicines.push({
+      id: med.id || med._id || `med-${Date.now()}`,
+      name: med.name,
+      genericName: med.genericName || med.name,
+      kannadaName: med.kannadaName || med.name,
+      timing: med.timing || 'After Food',
+      color: med.color || '#0D9488',
+      dosage: med.dosage || '1 Tablet',
+      photo: med.photo || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80',
+    });
+  });
+
+  return Object.values(slotMap);
 };
 
 export const StorageService = {
@@ -28,30 +64,57 @@ export const StorageService = {
 
   /**
    * Gets all slots and their associated medicines.
+   * Tries backend GET /medicines first; falls back seamlessly to AsyncStorage.
    */
   getSlots: async () => {
     try {
+      // 1. Try backend API
+      const remoteMedicines = await ApiService.getMedicines();
+      if (remoteMedicines && Array.isArray(remoteMedicines) && remoteMedicines.length > 0) {
+        const slotsFromApi = groupMedicinesIntoSlots(remoteMedicines);
+        // Cache to AsyncStorage
+        await AsyncStorage.setItem(KEYS.SLOTS, JSON.stringify(slotsFromApi));
+        return slotsFromApi;
+      }
+
+      // 2. Fallback to AsyncStorage
       const json = await AsyncStorage.getItem(KEYS.SLOTS);
       if (json) {
         return JSON.parse(json);
       }
       return MOCK_SLOTS;
     } catch (e) {
-      console.warn('StorageService.getSlots error:', e);
+      console.warn('StorageService.getSlots fallback:', e);
       return MOCK_SLOTS;
     }
   },
 
   /**
-   * Adds a new medicine and places it into the corresponding slot (or creates a new slot).
+   * Adds a new medicine.
+   * Posts to backend POST /medicines AND updates local AsyncStorage.
    */
   addMedicine: async (medData) => {
     try {
-      const slots = await StorageService.getSlots();
       const slotTime = medData.time || '09:00 AM';
       const slotLabel = medData.selectedSlot || 'Morning';
+      const slotId = `slot-${slotLabel.toLowerCase().replace(/\s+/g, '-')}`;
 
-      // Find or create slot
+      // 1. Send to backend POST /medicines (API-ready architecture)
+      await ApiService.addMedicine({
+        name: medData.name,
+        genericName: medData.genericName || medData.name,
+        kannadaName: medData.kannadaLabel || medData.name,
+        timing: medData.timing || 'After Food',
+        dosage: medData.dosage || '1 Tablet',
+        color: '#0D9488',
+        photo: medData.photo || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80',
+        slotTime,
+        slotLabel: `${slotLabel} Medicines`,
+        slotId,
+      });
+
+      // 2. Update local AsyncStorage cache
+      const slots = await StorageService.getSlots();
       let targetSlot = slots.find((s) => s.time === slotTime || s.label.toLowerCase().includes(slotLabel.toLowerCase()));
 
       const newMedicine = {
@@ -69,7 +132,7 @@ export const StorageService = {
         targetSlot.medicines.push(newMedicine);
       } else {
         slots.push({
-          id: `slot-${Date.now()}`,
+          id: slotId,
           time: slotTime,
           label: `${slotLabel} Medicines`,
           status: 'SCHEDULED',
@@ -87,22 +150,33 @@ export const StorageService = {
 
   /**
    * Gets all dose history records.
+   * Tries backend GET /history first; falls back seamlessly to AsyncStorage.
    */
   getHistory: async () => {
     try {
+      // 1. Try backend API
+      const remoteHistory = await ApiService.getHistory();
+      if (remoteHistory && Array.isArray(remoteHistory) && remoteHistory.length > 0) {
+        // Cache to AsyncStorage
+        await AsyncStorage.setItem(KEYS.HISTORY, JSON.stringify(remoteHistory));
+        return remoteHistory;
+      }
+
+      // 2. Fallback to AsyncStorage
       const json = await AsyncStorage.getItem(KEYS.HISTORY);
       if (json) {
         return JSON.parse(json);
       }
       return MOCK_HISTORY;
     } catch (e) {
-      console.warn('StorageService.getHistory error:', e);
+      console.warn('StorageService.getHistory fallback:', e);
       return MOCK_HISTORY;
     }
   },
 
   /**
    * Marks a slot as TAKEN and prepends a new history record.
+   * Posts to backend POST /history AND updates local AsyncStorage.
    */
   recordSlotTaken: async (slotId = 'slot-morning') => {
     try {
@@ -114,8 +188,6 @@ export const StorageService = {
         await AsyncStorage.setItem(KEYS.SLOTS, JSON.stringify(slots));
       }
 
-      // Record to history
-      const history = await StorageService.getHistory();
       const now = new Date();
       const hours = now.getHours();
       const minutes = now.getMinutes().toString().padStart(2, '0');
@@ -135,6 +207,11 @@ export const StorageService = {
         takenAt: `${formattedTime} (Confirmed by Parent)`,
       };
 
+      // 1. Send to backend POST /history (API-ready architecture)
+      await ApiService.recordHistory(newRecord);
+
+      // 2. Update local AsyncStorage cache
+      const history = await StorageService.getHistory();
       const updatedHistory = [newRecord, ...history];
       await AsyncStorage.setItem(KEYS.HISTORY, JSON.stringify(updatedHistory));
 

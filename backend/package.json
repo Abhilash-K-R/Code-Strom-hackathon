@@ -1,0 +1,25 @@
+{
+  "name": "familymeds-backend",
+  "version": "1.0.0",
+  "description": "FamilyMeds (DoseBandhu) Minimal Express & MongoDB Atlas Backend",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node -e \"require('./src/server'); setTimeout(() => require('./test-api'), 1500);\""
+  },
+  "keywords": [
+    "familymeds",
+    "express",
+    "mongodb",
+    "hackathon"
+  ],
+  "author": "Elite Evolvers",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5"
+  }
+}
