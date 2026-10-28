@@ -13,14 +13,25 @@ import {
 import { COLORS } from '../constants/theme';
 import { SpeechService } from '../services/speechService';
 import { MOCK_SLOTS, MOCK_PARENT } from '../constants/mockData';
+import { StorageService } from '../services/storageService';
 
 export default function AlarmScreen({ navigation, route }) {
   const [takenConfirmed, setTakenConfirmed] = useState(false);
-  const morningSlot = MOCK_SLOTS[0]; // 09:00 AM slot
+  const [currentSlot, setCurrentSlot] = useState(MOCK_SLOTS[0]);
+  const requestedSlotId = route?.params?.slotId;
+
   const kannadaSpokenText = "ಅಮ್ಮಾ, ಬೆಳಗಿನ ಬಿಪಿ ಮತ್ತು ಸಕ್ಕರೆ ಕಾಯಿಲೆ ಮಾತ್ರೆ ತೆಗೆದುಕೊಳ್ಳಿ.";
   const englishFallback = "Amma, please take your morning BP and Sugar tablets.";
 
   useEffect(() => {
+    // Load actual slot from StorageService
+    StorageService.getSlots().then((slots) => {
+      if (slots && slots.length > 0) {
+        const found = slots.find((s) => s.id === requestedSlotId) || slots[0];
+        setCurrentSlot(found);
+      }
+    });
+
     // Automatically trigger voice prompt when alarm fires
     const timer = setTimeout(() => {
       SpeechService.speakKannada(kannadaSpokenText, englishFallback);
@@ -30,18 +41,23 @@ export default function AlarmScreen({ navigation, route }) {
       SpeechService.stop();
       clearTimeout(timer);
     };
-  }, []);
+  }, [requestedSlotId]);
 
-  const handleTakenPress = () => {
+  const handleTakenPress = async () => {
     SpeechService.stop();
     setTakenConfirmed(true);
+
+    // Save TAKEN status into AsyncStorage and append to History
+    await StorageService.recordSlotTaken(currentSlot?.id || 'slot-morning');
+
     // Voice confirmation
     SpeechService.speakKannada("ಧನ್ಯವಾದಗಳು ಅಮ್ಮಾ, ಮಾತ್ರೆ ತೆಗೆದುಕೊಂಡಿದ್ದೀರಿ ಎಂದು ದಾಖಲಾಗಿದೆ.", "Thank you Amma, recorded as taken.");
     
     setTimeout(() => {
+      const medListStr = currentSlot?.medicines?.map((m) => m.name).join(' & ') || 'Tablets';
       Alert.alert(
         "ಮಾತ್ರೆ ತೆಗೆದುಕೊಳ್ಳಲಾಗಿದೆ! (Recorded)",
-        "Both BP and Sugar tablets logged as TAKEN at 09:08 AM. Child notified.",
+        `${medListStr} logged as TAKEN in local storage and updated in Doctor Chart.`,
         [
           {
             text: "ಸರಿ (OK)",
@@ -71,8 +87,8 @@ export default function AlarmScreen({ navigation, route }) {
           <Text style={styles.pulsingDot}>🔔</Text>
           <Text style={styles.headerBadgeText}>ಮಾತ್ರೆ ಸಮಯ (MEDICINE TIME)</Text>
         </View>
-        <Text style={styles.timeBig}>{morningSlot.time}</Text>
-        <Text style={styles.slotLabelKannada}>ಬೆಳಗಿನ ಮಾತ್ರೆಗಳು (Morning Slot)</Text>
+        <Text style={styles.timeBig}>{currentSlot?.time || '09:00 AM'}</Text>
+        <Text style={styles.slotLabelKannada}>{currentSlot?.label || 'ಬೆಳಗಿನ ಮಾತ್ರೆಗಳು'}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -90,10 +106,12 @@ export default function AlarmScreen({ navigation, route }) {
         </TouchableOpacity>
 
         {/* Medicines in this slot */}
-        <Text style={styles.sectionHeader}>ತೆಗೆದುಕೊಳ್ಳಬೇಕಾದ ಮಾತ್ರೆಗಳು (2 Tablets):</Text>
+        <Text style={styles.sectionHeader}>
+          ತೆಗೆದುಕೊಳ್ಳಬೇಕಾದ ಮಾತ್ರೆಗಳು ({currentSlot?.medicines?.length || 0} Tablets):
+        </Text>
         
-        {morningSlot.medicines.map((med, index) => (
-          <View key={med.id} style={styles.medicineCard}>
+        {currentSlot?.medicines?.map((med, index) => (
+          <View key={med.id || index} style={styles.medicineCard}>
             <Image
               source={{ uri: med.photo }}
               style={styles.tabletImage}
@@ -104,9 +122,9 @@ export default function AlarmScreen({ navigation, route }) {
                 <Text style={styles.pillIndex}>#{index + 1}</Text>
                 <Text style={styles.pillTiming}>{med.timing}</Text>
               </View>
-              <Text style={styles.medNameKannada}>{med.kannadaName}</Text>
-              <Text style={styles.medNameEnglish}>{med.name} ({med.genericName})</Text>
-              <Text style={styles.dosageText}>ಪ್ರಮಾಣ: {med.dosage}</Text>
+              <Text style={styles.medNameKannada}>{med.kannadaName || med.name}</Text>
+              <Text style={styles.medNameEnglish}>{med.name} ({med.genericName || med.name})</Text>
+              <Text style={styles.dosageText}>ಪ್ರಮಾಣ: {med.dosage || '1 Tablet'}</Text>
             </View>
           </View>
         ))}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,29 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { MOCK_PARENT, MOCK_SLOTS } from '../constants/mockData';
+import { StorageService } from '../services/storageService';
 
 export default function ChildDashboardScreen({ navigation }) {
   // Demo state: toggle between normal monitoring and 30-min missed dose alert
   const [isMissedAlertActive, setIsMissedAlertActive] = useState(false);
+  const [slots, setSlots] = useState(MOCK_SLOTS);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      StorageService.getSlots().then((data) => {
+        if (isMounted && data) {
+          setSlots(data);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
 
   const triggerMissedDoseSimulation = () => {
     setIsMissedAlertActive(true);
@@ -133,52 +150,33 @@ export default function ChildDashboardScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Morning Slot */}
-        <View style={styles.doseCard}>
-          <View style={styles.doseCardTop}>
-            <View>
-              <Text style={styles.doseTime}>09:00 AM — Morning (ಬೆಳಗ್ಗೆ)</Text>
-              <Text style={styles.doseInstruction}>After Breakfast</Text>
-            </View>
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>Pending Tap</Text>
-            </View>
-          </View>
+        {/* Dynamic Slots Render */}
+        {slots.map((slot) => {
+          const isTaken = slot.status === 'TAKEN';
+          return (
+            <View key={slot.id} style={styles.doseCard}>
+              <View style={styles.doseCardTop}>
+                <View>
+                  <Text style={styles.doseTime}>{slot.time} — {slot.label}</Text>
+                  <Text style={styles.doseInstruction}>{slot.medicines?.[0]?.timing || 'As Scheduled'}</Text>
+                </View>
+                <View style={isTaken ? styles.takenBadgeChild : styles.pendingBadge}>
+                  <Text style={isTaken ? styles.takenBadgeChildText : styles.pendingBadgeText}>
+                    {isTaken ? '✓ Taken' : 'Pending Tap'}
+                  </Text>
+                </View>
+              </View>
 
-          <View style={styles.pillListRow}>
-            <View style={styles.pillChip}>
-              <Text style={styles.pillChipText}>💊 BP Tablet (Telma 40)</Text>
+              <View style={styles.pillListRow}>
+                {slot.medicines?.map((med) => (
+                  <View key={med.id} style={styles.pillChip}>
+                    <Text style={styles.pillChipText}>💊 {med.name} ({med.dosage || '1 Tab'})</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-            <View style={styles.pillChip}>
-              <Text style={styles.pillChipText}>💊 Sugar Tablet (Metformin)</Text>
-            </View>
-          </View>
-
-          <View style={styles.cardFooter}>
-            <Text style={styles.cardFooterText}>
-              Voice: "ಅಮ್ಮಾ, ಬೆಳಗಿನ ಬಿಪಿ ಮಾತ್ರೆ ತೆಗೆದುಕೊಳ್ಳಿ"
-            </Text>
-          </View>
-        </View>
-
-        {/* Night Slot */}
-        <View style={styles.doseCard}>
-          <View style={styles.doseCardTop}>
-            <View>
-              <Text style={styles.doseTime}>08:30 PM — Night (ರಾತ್ರಿ)</Text>
-              <Text style={styles.doseInstruction}>After Dinner</Text>
-            </View>
-            <View style={styles.scheduledBadge}>
-              <Text style={styles.scheduledBadgeText}>Scheduled</Text>
-            </View>
-          </View>
-
-          <View style={styles.pillListRow}>
-            <View style={styles.pillChip}>
-              <Text style={styles.pillChipText}>💊 Calcium Tablet (Shelcal 500)</Text>
-            </View>
-          </View>
-        </View>
+          );
+        })}
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -432,6 +430,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 1,
+  },
+  takenBadgeChild: {
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  takenBadgeChildText: {
+    color: '#166534',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   pendingBadge: {
     backgroundColor: '#FEF3C7',

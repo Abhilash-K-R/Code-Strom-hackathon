@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,30 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { MOCK_HISTORY } from '../constants/mockData';
+import { StorageService } from '../services/storageService';
 
 export default function HistoryScreen({ navigation }) {
   const [filter, setFilter] = useState('ALL');
+  const [historyList, setHistoryList] = useState(MOCK_HISTORY);
 
-  const filteredData = MOCK_HISTORY.filter((item) => {
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      StorageService.getHistory().then((data) => {
+        if (isMounted && data) {
+          setHistoryList(data);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
+
+  const filteredData = historyList.filter((item) => {
     if (filter === 'ALL') return true;
     return item.status === filter;
   });

@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { COLORS } from '../constants/theme';
+import { StorageService } from '../services/storageService';
 
 export default function AddMedicineScreen({ navigation }) {
   const [name, setName] = useState('Thyronorm 50mcg');
@@ -23,10 +24,25 @@ export default function AddMedicineScreen({ navigation }) {
 
   const samplePhoto = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80';
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!name.trim()) {
+      Alert.alert("Error", "Please enter a medicine name.");
+      return;
+    }
+
+    await StorageService.addMedicine({
+      name,
+      kannadaLabel,
+      selectedSlot,
+      time,
+      timing,
+      photo: samplePhoto,
+      dosage: '1 Tablet',
+    });
+
     Alert.alert(
       "✅ Medicine Saved & Synced",
-      `"${name}" scheduled for ${time} (${selectedSlot}). Automatically synced to Amma's phone in Mandya.`,
+      `"${name}" scheduled for ${time} (${selectedSlot}). Saved to local storage and active for Amma.`,
       [{ text: "OK", onPress: () => navigation.goBack() }]
     );
   };

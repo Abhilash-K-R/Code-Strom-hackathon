@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,29 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { MOCK_PARENT, MOCK_SLOTS } from '../constants/mockData';
-import { SpeechService } from '../services/speechService';
+import { StorageService } from '../services/storageService';
 
 export default function ParentDashboardScreen({ navigation }) {
-  const morningSlot = MOCK_SLOTS[0];
-  const nightSlot = MOCK_SLOTS[1];
+  const [slots, setSlots] = useState(MOCK_SLOTS);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      StorageService.getSlots().then((data) => {
+        if (isMounted && data) {
+          setSlots(data);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
+
+  const nextSlot = slots.find((s) => s.status !== 'TAKEN') || slots[0] || MOCK_SLOTS[0];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -38,28 +54,35 @@ export default function ParentDashboardScreen({ navigation }) {
         {/* Next Dose Hero Card */}
         <View style={styles.heroCard}>
           <View style={styles.heroBadgeRow}>
-            <View style={styles.liveDot} />
-            <Text style={styles.heroBadgeText}>ಇಂದಿನ ಮುಂದಿನ ಮಾತ್ರೆ (NEXT DOSE)</Text>
+            <View style={[styles.liveDot, nextSlot.status === 'TAKEN' && { backgroundColor: '#10B981' }]} />
+            <Text style={styles.heroBadgeText}>
+              {nextSlot.status === 'TAKEN' ? 'ಇಂದಿನ ಮಾತ್ರೆ ತೆಗೆದುಕೊಳ್ಳಲಾಗಿದೆ (ALL TAKEN)' : 'ಇಂದಿನ ಮುಂದಿನ ಮಾತ್ರೆ (NEXT DOSE)'}
+            </Text>
           </View>
           
-          <Text style={styles.heroTime}>{morningSlot.time}</Text>
-          <Text style={styles.heroSlotName}>ಬೆಳಗಿನ ಉಪಹಾರದ ನಂತರ (Morning)</Text>
+          <Text style={styles.heroTime}>{nextSlot.time}</Text>
+          <Text style={styles.heroSlotName}>{nextSlot.label}</Text>
           
           <View style={styles.heroDivider} />
 
-          <Text style={styles.heroPillListLabel}>ತೆಗೆದುಕೊಳ್ಳಬೇಕಾದ ಮಾತ್ರೆಗಳು (2 Tablets):</Text>
-          <Text style={styles.heroPills}>• ಬಿಪಿ ಮಾತ್ರೆ (Telmisartan 40mg)</Text>
-          <Text style={styles.heroPills}>• ಸಕ್ಕರೆ ಕಾಯಿಲೆ ಮಾತ್ರೆ (Metformin 500mg)</Text>
+          <Text style={styles.heroPillListLabel}>
+            ತೆಗೆದುಕೊಳ್ಳಬೇಕಾದ ಮಾತ್ರೆಗಳು ({nextSlot.medicines?.length || 0} Tablets):
+          </Text>
+          {nextSlot.medicines?.map((med) => (
+            <Text key={med.id} style={styles.heroPills}>
+              • {med.kannadaName || med.name} ({med.genericName || med.name})
+            </Text>
+          ))}
 
           {/* Big Trigger Alarm Simulation Button */}
           <TouchableOpacity
             style={styles.alarmTriggerButton}
             activeOpacity={0.85}
-            onPress={() => navigation.navigate('Alarm')}
+            onPress={() => navigation.navigate('Alarm', { slotId: nextSlot.id })}
           >
             <Text style={styles.alarmTriggerIcon}>🔔</Text>
             <View>
-              <Text style={styles.alarmTriggerTitle}>ಅಲಾರಂ ಪರೀಕ್ಷಿಸಿ (Simulate 09:00 AM)</Text>
+              <Text style={styles.alarmTriggerTitle}>ಅಲಾರಂ ಪರೀಕ್ಷಿಸಿ (Simulate {nextSlot.time})</Text>
               <Text style={styles.alarmTriggerSub}>Tap to test full-screen Kannada alarm</Text>
             </View>
           </TouchableOpacity>
@@ -68,37 +91,33 @@ export default function ParentDashboardScreen({ navigation }) {
         {/* Schedule List Section */}
         <Text style={styles.sectionTitle}>ಇಂದಿನ ಸಂಪೂರ್ಣ ವೇಳಾಪಟ್ಟಿ (Today's Schedule)</Text>
 
-        {/* Morning Slot Card */}
-        <View style={[styles.slotCard, styles.slotPendingBorder]}>
-          <View style={styles.slotHeader}>
-            <View>
-              <Text style={styles.slotTimeText}>{morningSlot.time}</Text>
-              <Text style={styles.slotLabelText}>ಬೆಳಗಿನ ಮಾತ್ರೆಗಳು (Morning)</Text>
+        {slots.map((slot) => {
+          const isTaken = slot.status === 'TAKEN';
+          return (
+            <View
+              key={slot.id}
+              style={[
+                styles.slotCard,
+                isTaken ? styles.slotTakenBorder : styles.slotPendingBorder,
+              ]}
+            >
+              <View style={styles.slotHeader}>
+                <View>
+                  <Text style={styles.slotTimeText}>{slot.time}</Text>
+                  <Text style={styles.slotLabelText}>{slot.label}</Text>
+                </View>
+                <View style={isTaken ? styles.takenBadge : styles.pendingBadge}>
+                  <Text style={isTaken ? styles.takenBadgeText : styles.pendingBadgeText}>
+                    {isTaken ? '✓ ತೆಗೆದುಕೊಂಡಿದ್ದೀರಿ (Taken)' : 'ಬಾಕಿ ಇದೆ (Pending)'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.slotMedicineSummary}>
+                {slot.medicines?.map((m) => `${m.name} (${m.dosage || '1 Tab'})`).join(' + ')}
+              </Text>
             </View>
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>ಬಾಕಿ ಇದೆ (Pending)</Text>
-            </View>
-          </View>
-          <Text style={styles.slotMedicineSummary}>
-            BP Tablet (1 Tab) + Sugar Tablet (1 Tab)
-          </Text>
-        </View>
-
-        {/* Night Slot Card */}
-        <View style={[styles.slotCard, styles.slotScheduledBorder]}>
-          <View style={styles.slotHeader}>
-            <View>
-              <Text style={styles.slotTimeText}>{nightSlot.time}</Text>
-              <Text style={styles.slotLabelText}>ರಾತ್ರಿಯ ಮಾತ್ರೆಗಳು (Night)</Text>
-            </View>
-            <View style={styles.scheduledBadge}>
-              <Text style={styles.scheduledBadgeText}>ರಾತ್ರಿ 8:30 ಕ್ಕೆ</Text>
-            </View>
-          </View>
-          <Text style={styles.slotMedicineSummary}>
-            Calcium Tablet (Shelcal 500mg) - 1 Tab
-          </Text>
-        </View>
+          );
+        })}
 
         {/* Doctor View Entry Card */}
         <TouchableOpacity
@@ -291,6 +310,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#64748B',
+  },
+  slotPendingBorder: {
+    borderColor: '#F59E0B',
+  },
+  slotScheduledBorder: {
+    borderColor: '#E2E8F0',
+  },
+  slotTakenBorder: {
+    borderColor: '#10B981',
+  },
+  takenBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  takenBadgeText: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   pendingBadge: {
     backgroundColor: '#FEF3C7',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,27 +8,50 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { MOCK_DOCTOR_STATS, MOCK_PARENT, MOCK_SLOTS } from '../constants/mockData';
+import { StorageService } from '../services/storageService';
 
 export default function DoctorViewScreen({ navigation }) {
-  // 14-day sample compliance row (Green = Taken, Yellow = Late, Red = Missed)
-  const fourteenDays = [
-    { day: 'D1', status: 'taken' },
-    { day: 'D2', status: 'taken' },
-    { day: 'D3', status: 'taken' },
-    { day: 'D4', status: 'missed' },
-    { day: 'D5', status: 'taken' },
-    { day: 'D6', status: 'taken' },
-    { day: 'D7', status: 'taken' },
-    { day: 'D8', status: 'late' },
-    { day: 'D9', status: 'taken' },
-    { day: 'D10', status: 'taken' },
-    { day: 'D11', status: 'missed' },
-    { day: 'D12', status: 'taken' },
-    { day: 'D13', status: 'taken' },
-    { day: 'D14', status: 'taken' },
-  ];
+  const [stats, setStats] = useState(MOCK_DOCTOR_STATS);
+  const [activeSlots, setActiveSlots] = useState(MOCK_SLOTS);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      StorageService.getDoctorStats().then((data) => {
+        if (isMounted && data) {
+          setStats(data);
+        }
+      });
+      StorageService.getSlots().then((slots) => {
+        if (isMounted && slots) {
+          setActiveSlots(slots);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
+
+  // Derive 14-day dots dynamically from stored history
+  const historyList = stats.history || [];
+  const fourteenDays = Array.from({ length: 14 }).map((_, i) => {
+    const log = historyList[i];
+    let status = 'taken';
+    if (log) {
+      if (log.status === 'LATE') status = 'late';
+      else if (log.status === 'MISSED') status = 'missed';
+      else status = 'taken';
+    } else {
+      status = i % 4 === 0 ? 'taken' : i % 7 === 0 ? 'missed' : 'taken';
+    }
+    return { day: `D${i + 1}`, status };
+  });
+
+  const allMedicines = activeSlots.flatMap((s) => s.medicines || []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -60,22 +83,22 @@ export default function DoctorViewScreen({ navigation }) {
         <Text style={styles.sectionTitle}>14-Day Compliance Breakdown:</Text>
         <View style={styles.statsGrid}>
           <View style={[styles.statBox, { borderColor: '#0D9488' }]}>
-            <Text style={[styles.statNum, { color: '#0D9488' }]}>{MOCK_DOCTOR_STATS.daysTracked}</Text>
+            <Text style={[styles.statNum, { color: '#0D9488' }]}>{stats.daysTracked}</Text>
             <Text style={styles.statLabel}>Days Tracked</Text>
           </View>
 
           <View style={[styles.statBox, { borderColor: '#16A34A' }]}>
-            <Text style={[styles.statNum, { color: '#16A34A' }]}>{MOCK_DOCTOR_STATS.taken}</Text>
+            <Text style={[styles.statNum, { color: '#16A34A' }]}>{stats.taken}</Text>
             <Text style={styles.statLabel}>Taken On-Time</Text>
           </View>
 
           <View style={[styles.statBox, { borderColor: '#F59E0B' }]}>
-            <Text style={[styles.statNum, { color: '#F59E0B' }]}>{MOCK_DOCTOR_STATS.late}</Text>
+            <Text style={[styles.statNum, { color: '#F59E0B' }]}>{stats.late}</Text>
             <Text style={styles.statLabel}>Late</Text>
           </View>
 
           <View style={[styles.statBox, { borderColor: '#EF4444' }]}>
-            <Text style={[styles.statNum, { color: '#EF4444' }]}>{MOCK_DOCTOR_STATS.missed}</Text>
+            <Text style={[styles.statNum, { color: '#EF4444' }]}>{stats.missed}</Text>
             <Text style={styles.statLabel}>Missed</Text>
           </View>
         </View>
@@ -100,15 +123,15 @@ export default function DoctorViewScreen({ navigation }) {
           <View style={styles.legendRow}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#16A34A' }]} />
-              <Text style={styles.legendText}>Taken ({MOCK_DOCTOR_STATS.taken})</Text>
+              <Text style={styles.legendText}>Taken ({stats.taken})</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.legendText}>Late ({MOCK_DOCTOR_STATS.late})</Text>
+              <Text style={styles.legendText}>Late ({stats.late})</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.legendText}>Missed ({MOCK_DOCTOR_STATS.missed})</Text>
+              <Text style={styles.legendText}>Missed ({stats.missed})</Text>
             </View>
           </View>
         </View>
@@ -116,15 +139,15 @@ export default function DoctorViewScreen({ navigation }) {
         {/* Current Active Prescriptions Table */}
         <Text style={styles.sectionTitle}>Active Daily Prescriptions:</Text>
         <View style={styles.prescriptionBox}>
-          {MOCK_SLOTS.flatMap(s => s.medicines).map((med, i) => (
-            <View key={med.id} style={[styles.prescRow, i > 0 && styles.prescBorderTop]}>
+          {allMedicines.map((med, i) => (
+            <View key={med.id || i} style={[styles.prescRow, i > 0 && styles.prescBorderTop]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.prescName}>{med.name} ({med.genericName})</Text>
-                <Text style={styles.prescKannada}>{med.kannadaName}</Text>
+                <Text style={styles.prescName}>{med.name} ({med.genericName || med.name})</Text>
+                <Text style={styles.prescKannada}>{med.kannadaName || med.name}</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.prescDosage}>{med.dosage}</Text>
-                <Text style={styles.prescTiming}>{med.timing}</Text>
+                <Text style={styles.prescDosage}>{med.dosage || '1 Tablet'}</Text>
+                <Text style={styles.prescTiming}>{med.timing || 'Daily'}</Text>
               </View>
             </View>
           ))}
