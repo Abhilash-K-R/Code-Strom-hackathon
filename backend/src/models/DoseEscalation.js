@@ -55,3 +55,4 @@ doseEscalationSchema.set('toJSON', {
 });
 
 module.exports = mongoose.model('DoseEscalation', doseEscalationSchema);
+

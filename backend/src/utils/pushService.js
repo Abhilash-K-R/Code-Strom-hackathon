@@ -65,3 +65,4 @@ const sendExpoPushNotification = async (pushTokens, { title, body, data = {}, pr
 };
 
 module.exports = { sendExpoPushNotification };
+
