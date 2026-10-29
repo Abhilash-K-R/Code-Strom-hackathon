@@ -14,6 +14,7 @@ import { COLORS } from '../constants/theme';
 import { MOCK_PARENT, MOCK_SLOTS } from '../constants/mockData';
 import { StorageService } from '../services/storageService';
 import { AuthService } from '../services/authService';
+import { ApiService } from '../services/apiService';
 
 export default function ChildDashboardScreen({ navigation }) {
   // Demo state: toggle between normal monitoring and 30-min missed dose alert
@@ -21,6 +22,8 @@ export default function ChildDashboardScreen({ navigation }) {
   const [slots, setSlots] = useState(MOCK_SLOTS);
   const [userProfile, setUserProfile] = useState(null);
   const [familyData, setFamilyData] = useState(null);
+  const [liveStatus, setLiveStatus] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -100,7 +103,11 @@ export default function ChildDashboardScreen({ navigation }) {
             <View style={styles.statusRow}>
               <Text style={styles.shieldIcon}>🛡️</Text>
               <View style={styles.statusTextCol}>
-                <Text style={styles.statusTitle}>All Morning Alarms Armed</Text>
+                <Text style={styles.statusTitle}>
+      {liveStatus?.latestDose?.status === 'TAKEN'
+        ? '✅ Dose Confirmed by Parent'
+        : '🛡️ Alarms Armed & Monitored'}
+    </Text>
                 <Text style={styles.statusSubtitle}>
                   Parent phone is active. Alarms will fire locally on schedule.
                 </Text>

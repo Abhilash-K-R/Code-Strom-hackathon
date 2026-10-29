@@ -114,4 +114,38 @@ export const ApiService = {
       return null;
     }
   },
+
+  /**
+   * GET /families/live-status (Real-Time Live Sync Endpoint)
+   */
+  getLiveStatus: async () => {
+    try {
+      const res = await ApiService.requestWithTimeout('/families/live-status', {
+        method: 'GET',
+      });
+      if (!res.ok) {
+        throw new Error(`GET /families/live-status returned status ${res.status}`);
+      }
+      return await res.json();
+    } catch (error) {
+      console.log('ApiService.getLiveStatus network note:', error.message);
+      return null;
+    }
+  },
+
+  /**
+   * POST /users/push-token (Registers device push token)
+   */
+  updatePushToken: async (pushToken) => {
+    try {
+      const res = await ApiService.requestWithTimeout('/users/push-token', {
+        method: 'POST',
+        body: JSON.stringify({ pushToken }),
+      });
+      return res.ok;
+    } catch (error) {
+      console.log('ApiService.updatePushToken error:', error.message);
+      return false;
+    }
+  },
 };

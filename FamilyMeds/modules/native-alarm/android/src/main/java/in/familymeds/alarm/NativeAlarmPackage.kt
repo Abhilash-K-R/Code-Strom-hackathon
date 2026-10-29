@@ -16,3 +16,4 @@ class NativeAlarmPackage : ReactPackage {
         return emptyList()
     }
 }
+

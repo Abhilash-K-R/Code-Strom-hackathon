@@ -186,3 +186,4 @@ class AlarmReceiver : BroadcastReceiver() {
         manager.notify(slotId.hashCode(), notification)
     }
 }
+

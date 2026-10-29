@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema(
       enum: ['CHILD', 'PARENT'],
       required: true,
     },
+    pushToken: {
+      type: String,
+      default: '',
+      trim: true,
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
@@ -39,4 +44,3 @@ userSchema.set('toJSON', {
 });
 
 module.exports = mongoose.model('User', userSchema);
-
