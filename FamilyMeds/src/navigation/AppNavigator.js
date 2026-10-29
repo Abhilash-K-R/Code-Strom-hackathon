@@ -3,6 +3,10 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import CreateFamilyScreen from '../screens/CreateFamilyScreen';
+import JoinFamilyScreen from '../screens/JoinFamilyScreen';
+
 import ParentDashboardScreen from '../screens/ParentDashboardScreen';
 import ChildDashboardScreen from '../screens/ChildDashboardScreen';
 import AlarmScreen from '../screens/AlarmScreen';
@@ -23,10 +27,13 @@ export default function AppNavigator() {
           animation: 'slide_from_right',
         }}
       >
-        {/* Core Entry */}
+        {/* Multi-Tenant Authentication & Family Pairing */}
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="CreateFamily" component={CreateFamilyScreen} />
+        <Stack.Screen name="JoinFamily" component={JoinFamilyScreen} />
 
-        {/* Prioritized Screens */}
+        {/* Dashboards & Modals */}
         <Stack.Screen name="ParentDashboard" component={ParentDashboardScreen} />
         <Stack.Screen name="ChildDashboard" component={ChildDashboardScreen} />
         <Stack.Screen
@@ -34,11 +41,11 @@ export default function AppNavigator() {
           component={AlarmScreen}
           options={{
             animation: 'fade_from_bottom',
-            gestureEnabled: false, // Prevents accidental swipe to dismiss alarm
+            gestureEnabled: false,
           }}
         />
 
-        {/* Supporting Screens */}
+        {/* Supporting Clinical Screens */}
         <Stack.Screen name="AddMedicine" component={AddMedicineScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="DoctorView" component={DoctorViewScreen} />

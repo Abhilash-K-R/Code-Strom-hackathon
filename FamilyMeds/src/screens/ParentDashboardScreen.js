@@ -13,10 +13,13 @@ import { COLORS } from '../constants/theme';
 import { MOCK_PARENT, MOCK_SLOTS } from '../constants/mockData';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
+import { AuthService } from '../services/authService';
 
 export default function ParentDashboardScreen({ navigation }) {
   const [slots, setSlots] = useState(MOCK_SLOTS);
   const [demoCountdown, setDemoCountdown] = useState(0);
+  const [userProfile, setUserProfile] = useState(null);
+  const [familyData, setFamilyData] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,8 +62,8 @@ export default function ParentDashboardScreen({ navigation }) {
       {/* Top Elder Header */}
       <View style={styles.topHeader}>
         <View>
-          <Text style={styles.greetingKannada}>ನಮಸ್ಕಾರ, {MOCK_PARENT.kannadaName}</Text>
-          <Text style={styles.greetingEnglish}>Good Morning, {MOCK_PARENT.name} ({MOCK_PARENT.location})</Text>
+          <Text style={styles.greetingKannada}>ನಮಸ್ಕಾರ, {userProfile?.name || MOCK_PARENT.kannadaName}</Text>
+          <Text style={styles.greetingEnglish}>Welcome, {userProfile?.name || MOCK_PARENT.name} • {familyData?.familyName || 'Family'} [{familyData?.familyCode || 'FM482A'}]</Text>
         </View>
         <TouchableOpacity
           style={styles.roleSwitchBtn}

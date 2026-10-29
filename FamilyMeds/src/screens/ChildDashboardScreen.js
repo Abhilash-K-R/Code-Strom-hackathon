@@ -13,11 +13,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { MOCK_PARENT, MOCK_SLOTS } from '../constants/mockData';
 import { StorageService } from '../services/storageService';
+import { AuthService } from '../services/authService';
 
 export default function ChildDashboardScreen({ navigation }) {
   // Demo state: toggle between normal monitoring and 30-min missed dose alert
   const [isMissedAlertActive, setIsMissedAlertActive] = useState(false);
   const [slots, setSlots] = useState(MOCK_SLOTS);
+  const [userProfile, setUserProfile] = useState(null);
+  const [familyData, setFamilyData] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,7 +58,7 @@ export default function ChildDashboardScreen({ navigation }) {
           <Text style={styles.headerTitle}>Family Monitoring</Text>
           <View style={styles.parentTagRow}>
             <View style={styles.onlineDot} />
-            <Text style={styles.parentNameText}>{MOCK_PARENT.name} ({MOCK_PARENT.location})</Text>
+            <Text style={styles.parentNameText}>{familyData ? `${familyData.familyName} [${familyData.familyCode}]` : `${MOCK_PARENT.name} (${MOCK_PARENT.location})`}</Text>
           </View>
         </View>
         <TouchableOpacity

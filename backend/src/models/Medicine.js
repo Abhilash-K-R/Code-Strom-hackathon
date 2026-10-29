@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const medicineSchema = new mongoose.Schema(
   {
+    familyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Family',
+      required: true,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
@@ -60,6 +66,7 @@ const medicineSchema = new mongoose.Schema(
 medicineSchema.set('toJSON', {
   transform: (doc, ret) => {
     ret.id = ret._id.toString();
+    delete ret.__v;
     return ret;
   },
 });

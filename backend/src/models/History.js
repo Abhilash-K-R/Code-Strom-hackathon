@@ -2,6 +2,16 @@ const mongoose = require('mongoose');
 
 const historySchema = new mongoose.Schema(
   {
+    familyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Family',
+      required: true,
+      index: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     date: {
       type: String,
       default: () => 'Today',
@@ -38,6 +48,7 @@ const historySchema = new mongoose.Schema(
 historySchema.set('toJSON', {
   transform: (doc, ret) => {
     ret.id = ret._id.toString();
+    delete ret.__v;
     return ret;
   },
 });

@@ -1,31 +1,38 @@
 import { API_CONFIG } from './apiConfig';
+import { AuthService } from './authService';
 
 /**
- * FamilyMeds API Service
+ * FamilyMeds Multi-Tenant API Service
  * Handles communication with the Node.js/Express backend.
- * Only covers:
- * - GET /medicines
- * - POST /medicines
- * - GET /history
- * - POST /history
+ * Automatically injects JWT Bearer token for strict family-level data scoping.
  */
 export const ApiService = {
   /**
-   * Helper to perform fetch with timeout
+   * Helper to perform fetch with timeout and dynamic token injection
    */
-  requestWithTimeout: async (url, options = {}, timeoutMs = API_CONFIG.TIMEOUT_MS) => {
+  requestWithTimeout: async (endpoint, options = {}, timeoutMs = API_CONFIG.TIMEOUT_MS) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(url, {
+      const baseUrl = await API_CONFIG.getBaseUrl();
+      const token = await AuthService.getToken();
+
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${baseUrl}${endpoint}`, {
         ...options,
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options.headers || {}),
-        },
+        headers,
       });
+
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
@@ -35,11 +42,11 @@ export const ApiService = {
   },
 
   /**
-   * GET /medicines
+   * GET /medicines (Family-Scoped)
    */
   getMedicines: async () => {
     try {
-      const res = await ApiService.requestWithTimeout(`${API_CONFIG.BASE_URL}/medicines`, {
+      const res = await ApiService.requestWithTimeout('/medicines', {
         method: 'GET',
       });
       if (!res.ok) {
@@ -53,11 +60,11 @@ export const ApiService = {
   },
 
   /**
-   * POST /medicines
+   * POST /medicines (Family-Scoped)
    */
   addMedicine: async (medData) => {
     try {
-      const res = await ApiService.requestWithTimeout(`${API_CONFIG.BASE_URL}/medicines`, {
+      const res = await ApiService.requestWithTimeout('/medicines', {
         method: 'POST',
         body: JSON.stringify(medData),
       });
@@ -72,11 +79,11 @@ export const ApiService = {
   },
 
   /**
-   * GET /history
+   * GET /history (Family-Scoped)
    */
   getHistory: async () => {
     try {
-      const res = await ApiService.requestWithTimeout(`${API_CONFIG.BASE_URL}/history`, {
+      const res = await ApiService.requestWithTimeout('/history', {
         method: 'GET',
       });
       if (!res.ok) {
@@ -90,11 +97,11 @@ export const ApiService = {
   },
 
   /**
-   * POST /history
+   * POST /history (Family-Scoped)
    */
   recordHistory: async (historyData) => {
     try {
-      const res = await ApiService.requestWithTimeout(`${API_CONFIG.BASE_URL}/history`, {
+      const res = await ApiService.requestWithTimeout('/history', {
         method: 'POST',
         body: JSON.stringify(historyData),
       });
