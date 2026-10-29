@@ -1,0 +1,6 @@
+{
+  "name": "native-alarm",
+  "version": "1.0.0",
+  "description": "Native Android AlarmManager module with exact wakeup and reboot recovery for FamilyMeds",
+  "main": "index.js"
+}

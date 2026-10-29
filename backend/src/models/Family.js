@@ -36,3 +36,4 @@ familySchema.set('toJSON', {
 });
 
 module.exports = mongoose.model('Family', familySchema);
+

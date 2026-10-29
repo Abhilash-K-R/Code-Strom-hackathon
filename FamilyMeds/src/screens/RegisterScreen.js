@@ -319,3 +319,4 @@ const styles = StyleSheet.create({
     color: '#0D9488',
   },
 });
+

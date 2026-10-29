@@ -41,3 +41,4 @@ familyMemberSchema.set('toJSON', {
 });
 
 module.exports = mongoose.model('FamilyMember', familyMemberSchema);
+
